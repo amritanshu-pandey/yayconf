@@ -42,27 +42,23 @@ class Configuration:
             CONFIG-OPTION-2: value2
 
     Class attributes:
-      1. ``config_schema_file``: Path to the config schema file. This is used
+      1. ``schema_file``: Path to the config schema file. This is used
          to define the mandatory fields and default values.
       2. ``config_file``: Path to the user specified configuration file
       3. ``read_from_env``: If True, Default values specified in the config
          schema file are used to prepare the config dictionary
       4. ``use_defaults``: If True, Default values specified in the config
          schema file are used to prepare the config dictionary
-      5. ``secondary_config_schema_file``: Path to the secondary config schema
-         file. If this path is provided, the config options specified in this
-         file take precedence over the primary schema file specified by option
-         ``config_schema_file``
     """
 
-    def __init__(self, config_schema_file=None, config_file=None,
+    def __init__(self, schema_file, config_file,
                  read_from_env=False,
                  use_defaults=True):
         """
         Read config options from various sources
 
         Arguments:
-        config_schema_file {str} --
+        schema_file {str} --
                     Path to the config schema file. This is used to
                     define the mandatory fields and default values.
         config_file {str} -- Path to the configuration file
@@ -79,7 +75,7 @@ class Configuration:
         """
 
         self._config = {}
-        self.config_schema_file = config_schema_file
+        self.schema_file = schema_file
         self.config_file = config_file
         self.read_from_env = read_from_env
         self.use_defaults = use_defaults
@@ -103,7 +99,8 @@ class Configuration:
                 ' Default config values will be used.')
         return cfg
 
-    def _read_config_schema(self, schema_file):
+    @property
+    def schema(self):
         """
         Read schema file
 
@@ -114,11 +111,11 @@ class Configuration:
             dict -- Config options read from schema file
         """
 
-        if not os.path.isfile(schema_file):
+        if not os.path.isfile(self.schema_file):
             raise ConfigurationFileNotFound(
-                f'Config schema file not found: {schema_file}')
+                f'Config schema file not found: {self.schema_file}')
 
-        with open(schema_file, 'r') as schema_yaml:
+        with open(self.schema_file, 'r') as schema_yaml:
             cfg = yaml.safe_load(schema_yaml)
         return cfg
 
@@ -131,12 +128,9 @@ class Configuration:
             dict -- Config options read from environment variables
         """
 
-        default_config_schema = self._read_config_schema(
-            self.config_schema_file
-        )
         cfg = {
             i['name']: os.environ.get(i['name'])
-            for i in default_config_schema
+            for i in self.schema
             if os.environ.get(i['name'])
         }
 
@@ -156,10 +150,7 @@ class Configuration:
 
         missing_keys = []
 
-        default_config_schema = self._read_config_schema(
-            self.config_schema_file
-        )
-        for i in default_config_schema:
+        for i in self.schema:
             if i['required'] and i['name'] not in self._config:
                 missing_keys.append(i['name'])
 
@@ -185,11 +176,8 @@ class Configuration:
 
         config_from_file = self._read_config()
 
-        default_config_schema = self._read_config_schema(
-            self.config_schema_file
-        )
         default_config_values = {
-            i['name']: i['default'] for i in default_config_schema
+            i['name']: i['default'] for i in self.schema
             if 'default' in i
         } if self.use_defaults else {}
 
@@ -205,16 +193,13 @@ class Configuration:
     def print_config_file(self):
         """Print the sample configuration file from schema
         """
-        default_config = self._read_config_schema(
-            self.config_schema_file
-        )
         config_dict = {
-            i['name']: i.get('default', '') for i in default_config
+            i['name']: i.get('default', '') for i in self.schema
         }
         print(yaml.dump(config_dict, default_flow_style=False))
 
     @property
-    def as_dict(self):
+    def config(self):
         """
         Representation of the Configuration as a dictionary
 
