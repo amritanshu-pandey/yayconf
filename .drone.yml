@@ -35,7 +35,7 @@ steps:
             echo "Tag is not contained in master branch"
             exit 1
           fi
-      - python3 setup.py sdist
+      - python3 setup.py bdist_wheel
       - pip3 install twine
       - export $(cat vault.env | xargs)
       - |
@@ -43,6 +43,7 @@ steps:
             --repository-url "$${pypi_repository}" \
             --username "$${pypi_username}" \
             --password "$${pypi_password}"
+      - echo "Published to pip repo succesfully"
     depends_on: [linting, tests]
     when:
       event: [tag]
