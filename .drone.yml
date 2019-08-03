@@ -1,0 +1,48 @@
+---
+kind: pipeline
+name: dockerbuild
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+  - name: get-vault-envs
+    image: docker.xps.lan/drone-amritanshu/vault-to-env
+    settings:
+      vault_addr: http://vault.xps.lan
+      vault_token:
+        from_secret: vault_token
+      vault_secret_path: drone/data/ci
+  - name: linting
+    image: docker.xps.lan/docker-hawkins
+    commands:
+      - pip3 install flake8
+      - flake8 .
+    depends_on: [get-vault-envs]
+  - name: tests
+    image: docker.xps.lan/docker-hawkins
+    commands:
+      - pip3 install -e .[test]
+      - pytest tests/
+    depends_on: [get-vault-envs]
+  - name: publish
+    image: docker.xps.lan/docker-hawkins
+    commands:
+      - git fetch
+      - |
+          if [ ! $(git rev-parse origin/master) = $(git rev-parse ${DRONE_TAG}^{commit}) ]; then
+            echo "Tag is not contained in master branch"
+            exit 1
+          fi
+      - python3 setup.py sdist
+      - pip3 install twine
+      - export $(cat vault.env | xargs)
+      - |
+          twine upload dist/* \
+            --repository-url "$${pypi_repository}" \
+            --username "$${pypi_username}" \
+            --password "$${pypi_password}"
+    depends_on: [linting, tests]
+    when:
+      event: [tag]
