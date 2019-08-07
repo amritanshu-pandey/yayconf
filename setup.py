@@ -33,7 +33,7 @@ setup(
     version=os.getenv('DRONE_TAG'),
     python_requires=">={}.{}".format(*REQUIRED_PYTHON),
     author="Amritanshu Pandey",
-    author_email="amp.msit@gmail.com",
+    author_email="amritanshu16@outlook.com",
     description=(
         "Yet another yaml based configuration library"
     ),

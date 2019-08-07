@@ -4,30 +4,21 @@ name: dockerbuild
 
 platform:
   os: linux
-  arch: arm64
+  arch: amd64
 
 steps:
-  - name: get-vault-envs
-    image: docker.xps.lan/drone-amritanshu/vault-to-env
-    settings:
-      vault_addr: http://vault.xps.lan
-      vault_token:
-        from_secret: vault_token
-      vault_secret_path: drone/data/ci
   - name: linting
-    image: docker.xps.lan/docker-hawkins
+    image: python:3.7
     commands:
       - pip3 install flake8
       - flake8 .
-    depends_on: [get-vault-envs]
   - name: tests
-    image: docker.xps.lan/docker-hawkins
+    image: python:3.7
     commands:
       - pip3 install -e .[test]
       - pytest tests/
-    depends_on: [get-vault-envs]
   - name: publish
-    image: docker.xps.lan/docker-hawkins
+    image: python:3.7
     commands:
       - git fetch
       - |
@@ -37,13 +28,17 @@ steps:
           fi
       - python3 setup.py bdist_wheel
       - pip3 install twine
-      - export $(cat vault.env | xargs)
       - |
           twine upload dist/* \
-            --repository-url "$${pypi_repository}" \
+            --repository-url "https://upload.pypi.org/legacy/" \
             --username "$${pypi_username}" \
-            --password "$${pypi_password}"
+            --password "$${pypi_password}" --verbose
       - echo "Published to pip repo succesfully"
+    environment:
+      pypi_username:
+        from_secret: pypi_username
+      pypi_password:
+        from_secret: pypi_password
     depends_on: [linting, tests]
     when:
       event: [tag]
