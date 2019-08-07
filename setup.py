@@ -47,7 +47,7 @@ setup(
     zip_safe=False,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
-        "Environment :: CLI Environment",
+        "Environment :: Console",
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
